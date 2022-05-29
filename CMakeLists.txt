@@ -42,7 +42,15 @@ file(GLOB_RECURSE SHADER_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gl
         "${CMAKE_CURRENT_SOURCE_DIR}/glsl/*.rmiss"
         "${CMAKE_CURRENT_SOURCE_DIR}/glsl/*.rcall")
 
+file(GLOB_RECURSE TEXTURES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/assets/image/*.jpg")
+file(COPY ${TEXTURES} DESTINATION ${CMAKE_BINARY_DIR}/textures)
+
+file(GLOB_RECURSE MESH CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/assets/mesh/*.obj"
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/mesh/*.png")
+file(COPY ${MESH} DESTINATION ${CMAKE_BINARY_DIR}/mesh)
+
 compile_shader(
+
         "${SHADER_FILES}"
         ThreeDayVulkan_shader
         "${SHADER_INCLUDE_FOLDER}"

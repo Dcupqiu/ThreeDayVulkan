@@ -16,7 +16,7 @@
    And #define STBI_MALLOC, STBI_REALLOC, and STBI_FREE to avoid using malloc,realloc,free
 
 
-   QUICK NOTES:
+   QUICK NOTES:STB_IMAGE_IMPLEMENTATION
       Primarily of interest to game developers and other people who can
           avoid problematic images and only need the trivial interface
 
