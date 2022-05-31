@@ -1472,7 +1472,7 @@ private:
         samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
         samplerInfo.anisotropyEnable = VK_TRUE; // 反采样
-        samplerInfo.maxAnisotropy = 16;
+        samplerInfo.maxAnisotropy = 16; // 反采样等级，有什么作用？》
 
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE; // [0, texWidth) & [, texHeight) if True;
@@ -1480,7 +1480,7 @@ private:
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = static_cast<float>(mipLevels / 2); // Add mip map
+//        samplerInfo.minLod = static_cast<float>(mipLevels / 2); // Add mip map
         samplerInfo.maxLod = static_cast<float>(mipLevels);
 
         if(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS){
