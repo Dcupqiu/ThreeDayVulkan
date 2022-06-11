@@ -12,9 +12,17 @@ find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(Vulkan REQUIRED)
 
-add_executable(ThreeDayVulkan main.cpp)
+file(GLOB_RECURSE SOURCE_FILES "./vulkan/*.cpp")
+
+add_executable(ThreeDayVulkan main.cpp ${SOURCE_FILES})
 target_link_libraries(ThreeDayVulkan Vulkan::Vulkan glfw)
 target_include_directories(ThreeDayVulkan PRIVATE ./stb ./generated)
+target_include_directories(ThreeDayVulkan PUBLIC ./vulkan)
+
+target_include_directories(
+        ThreeDayVulkan
+        PUBLIC ./vulkanmemoryallocator/include
+)
 
 set(GENERATED_SHADER_FOLDER "generated")
 if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${GENERATED_SHADER_FOLDER})

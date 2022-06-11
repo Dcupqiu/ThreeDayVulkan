@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <vk_mem_alloc.h>
+
 #include <chrono>
 
 #include <GLFW/glfw3.h>
