@@ -216,6 +216,18 @@ private:
 
     bool framebufferResized = false;
 
+	struct Compute {
+		VkQueue queue;								// Separate queue for compute commands (queue family may differ from the one used for graphics)
+		VkCommandPool commandPool;					// Use a separate command pool (queue family may differ from the one used for graphics)
+		VkCommandBuffer commandBuffer;				// Command buffer storing the dispatch commands and barriers
+		VkSemaphore semaphore;                      // Execution dependency between compute & graphic submission
+		VkDescriptorSetLayout descriptorSetLayout;	// Compute shader binding layout
+		VkDescriptorSet descriptorSet;				// Compute shader bindings
+		VkPipelineLayout pipelineLayout;			// Layout of the compute pipeline
+		std::vector<VkPipeline> pipelines;			// Compute pipelines for image filters
+		int32_t pipelineIndex = 0;					// Current image filtering compute pipeline index
+	} compute;
+
     static std::vector<char> readFile(const std::string& filename){
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -250,10 +262,12 @@ private:
     struct QueueFamilyIndices{
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
+		std::optional<uint32_t> computeFamily;
 
         bool isComplete(){
             return graphicsFamily.has_value() &&
-                    presentFamily.has_value();
+                    presentFamily.has_value() &&
+					computeFamily.has_value();
         }
     };
 
@@ -300,6 +314,10 @@ private:
             if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
                 indices.graphicsFamily = i;
             }
+
+			if(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT){
+				indices.computeFamily = i;
+			}
 
             VkBool32 presentSupport = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surfaceKhr, &presentSupport);
@@ -376,18 +394,18 @@ private:
 
     // Get required Extensions | Below
     std::vector<const char *> getRequiredExtensions() {
-        uint32_t glfwExtensionCount = 0;
-        const char **glfwExtensions;
+	    uint32_t glfwExtensionCount = 0;
+	    const char **glfwExtensions;
 
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	    std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
 
-        if (enableValidationLayers) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
+	    if (enableValidationLayers) {
+		    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	    }
 
-        return extensions;
+	    return extensions;
     }
 
 
@@ -610,6 +628,7 @@ private:
         // 取两者所需的Queue的Handle
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+	    vkGetDeviceQueue(device, indices.computeFamily.value(), 0, &compute.queue);
     }
 
     void createSurface(){
@@ -790,6 +809,32 @@ private:
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
+
+	void createComputeDescriptorSetLayout(){
+		VkDescriptorSetLayoutBinding  inputImageBinding{};
+		inputImageBinding.binding = 0;
+		inputImageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		inputImageBinding.descriptorCount = 1;
+		inputImageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+
+		VkDescriptorSetLayoutBinding  outputImageBinding{};
+		outputImageBinding.binding = 1;
+		outputImageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		outputImageBinding.descriptorCount = 1;
+		outputImageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		std::array<VkDescriptorSetLayoutBinding, 2> bindings = {inputImageBinding, outputImageBinding};
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+		layoutInfo.pBindings = bindings.data();
+
+		if(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS){
+			throw std::runtime_error("failed to create descriptor!");
+		}
+	}
 
     /**
      * 在创建pipeline前，我们需要向Vulkan我们需要用到的attachments，明确多少色彩与深度buffers需要被使用，多少samples被使用以及内容如何交给render程序进行处理
@@ -1039,6 +1084,36 @@ private:
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
+
+	void createComputePipeline(){
+		// bind layout source
+		createComputeDescriptorSetLayout();
+
+		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+		pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutCreateInfo.setLayoutCount = 1;
+		pipelineLayoutCreateInfo.pSetLayouts = &compute.descriptorSetLayout;
+		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+
+		if(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &compute.pipelineLayout) != VK_SUCCESS){
+			throw std::runtime_error("failed to create pipeline layout");
+		}
+
+		// alloc pool
+		std::vector<VkDescriptorSetLayout> layouts(1, compute.descriptorSetLayout);
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = descriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = layouts.data();
+
+		if(vkAllocateDescriptorSets(device, &allocInfo, &compute.descriptorSet) != VK_SUCCESS){
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+
+
+	}
 
     void createFramebuffers(){
         swapChainFramebuffers.resize(swapChainImageViews.size());

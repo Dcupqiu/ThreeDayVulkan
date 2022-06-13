@@ -58,7 +58,6 @@ file(GLOB_RECURSE MESH CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/assets/mes
 file(COPY ${MESH} DESTINATION ${CMAKE_BINARY_DIR}/mesh)
 
 compile_shader(
-
         "${SHADER_FILES}"
         ThreeDayVulkan_shader
         "${SHADER_INCLUDE_FOLDER}"

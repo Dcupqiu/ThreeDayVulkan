@@ -1,5 +1,6 @@
 //
 // Created by Qiuzhe on 2022/6/11.
+// Render Hardware Interface
 //
 #pragma once
 #ifndef THREEDAYVULKAN_VULKAN_RHI_H
